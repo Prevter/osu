@@ -11,6 +11,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Logging;
 using osu.Framework.Timing;
+using osu.Game.Configuration;
 using osu.Game.Input.Handlers;
 using osu.Game.Screens.Play;
 
@@ -42,6 +43,10 @@ namespace osu.Game.Rulesets.UI
 
         private readonly Bindable<bool> waitingOnFrames = new Bindable<bool>();
 
+        private readonly Bindable<bool> lagPauseEnabled = new Bindable<bool>();
+
+        private readonly Bindable<double> lagPauseThreshold = new Bindable<double>();
+
         public double GameplayStartTime { get; }
 
         private IGameplayClock? parentGameplayClock;
@@ -65,6 +70,9 @@ namespace osu.Game.Rulesets.UI
 
         [Resolved]
         private OsuGame? game { get; set; }
+
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
 
         private readonly Stopwatch stopwatch = new Stopwatch();
 
@@ -102,6 +110,9 @@ namespace osu.Game.Rulesets.UI
 
             referenceClock = gameplayClock ?? Clock;
             Clock = this;
+
+            config.BindWith(OsuSetting.AutoPauseOnLag, lagPauseEnabled);
+            config.BindWith(OsuSetting.AutoPauseOnLagThreshold, lagPauseThreshold);
         }
 
         public override bool UpdateSubTree()
@@ -199,6 +210,12 @@ namespace osu.Game.Rulesets.UI
             // determine whether catch-up is required.
             if (state == PlaybackState.Valid && timeBehind > 0)
                 state = PlaybackState.RequiresCatchUp;
+
+            if (lagPauseEnabled.Value)
+            {
+                if (game?.Clock.ElapsedFrameTime >= lagPauseThreshold.Value)
+                    FrameTimeSpike?.Invoke(game!.Clock.ElapsedFrameTime);
+            }
 
             // The manual clock time has changed in the above code. The framed clock now needs to be updated
             // to ensure that the its time is valid for our children before input is processed
@@ -310,6 +327,8 @@ namespace osu.Game.Rulesets.UI
         IBindable<bool> IFrameStableClock.WaitingOnFrames => waitingOnFrames;
 
         #endregion
+
+        public Action<double>? FrameTimeSpike;
 
         private enum PlaybackState
         {

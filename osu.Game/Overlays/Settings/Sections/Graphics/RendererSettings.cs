@@ -3,6 +3,7 @@
 
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Configuration;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics;
@@ -21,11 +22,16 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
 
         private bool automaticRendererInUse;
 
+        private Bindable<bool>? autoPauseOnLag;
+        private SettingsSlider<double, TimeSlider>? lagPauseThresholdSlider;
+
         [BackgroundDependencyLoader]
         private void load(FrameworkConfigManager config, OsuConfigManager osuConfig, IDialogOverlay? dialogOverlay, OsuGame? game, GameHost host)
         {
             var renderer = config.GetBindable<RendererType>(FrameworkSetting.Renderer);
             automaticRendererInUse = renderer.Value == RendererType.Automatic;
+
+            autoPauseOnLag = osuConfig.GetBindable<bool>(OsuSetting.AutoPauseOnLag);
 
             Children = new Drawable[]
             {
@@ -56,6 +62,19 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                     LabelText = GraphicsSettingsStrings.ShowFPS,
                     Current = osuConfig.GetBindable<bool>(OsuSetting.ShowFpsDisplay)
                 },
+                new SettingsCheckbox
+                {
+                    LabelText = GraphicsSettingsStrings.AutoPauseOnLag,
+                    Current = autoPauseOnLag
+                },
+                lagPauseThresholdSlider = new SettingsSlider<double, TimeSlider>
+                {
+                    LabelText = GraphicsSettingsStrings.LagPauseThreshold,
+                    Current = osuConfig.GetBindable<double>(OsuSetting.AutoPauseOnLagThreshold),
+                    DisplayAsPercentage = false,
+                    KeyboardStep = 50,
+                    TransferValueOnCommit = true,
+                },
             };
 
             renderer.BindValueChanged(r =>
@@ -79,6 +98,8 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                     }));
                 }
             });
+
+            autoPauseOnLag.BindValueChanged(paused => lagPauseThresholdSlider.Current.Disabled = !paused.NewValue, true);
         }
 
         private partial class RendererSettingsDropdown : SettingsEnumDropdown<RendererType>

@@ -164,6 +164,16 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString ShrinkGameToSafeArea => new TranslatableString(getKey(@"shrink_game_to_safe_area"), @"Shrink game to avoid cameras and notches");
 
+        /// <summary>
+        /// "Auto-pause when lagging"
+        /// </summary>
+        public static LocalisableString AutoPauseOnLag => new TranslatableString(getKey(@"auto_pause_on_lag"), @"Auto-pause when lagging");
+
+        /// <summary>
+        /// "Lag pause threshold"
+        /// </summary>
+        public static LocalisableString LagPauseThreshold => new TranslatableString(getKey(@"lag_pause_threshold"), @"Lag pause threshold");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

@@ -51,6 +51,11 @@ namespace osu.Game.Screens.Play
         public const double RESULTS_DISPLAY_DELAY = 1000.0;
 
         /// <summary>
+        /// Grace period after loading the beatmap which will not allow automatic pausing on lag spikes.
+        /// </summary>
+        public const double PAUSE_ON_LAG_GRACE_PERIOD = 2000.0;
+
+        /// <summary>
         /// Raised after <see cref="StartGameplay"/> is called.
         /// </summary>
         public event Action OnGameplayStarted;
@@ -424,6 +429,9 @@ namespace osu.Game.Screens.Play
 
             IsBreakTime.BindTo(breakTracker.IsBreakTime);
             IsBreakTime.BindValueChanged(onBreakTimeChanged, true);
+
+            if (DrawableRuleset.FrameStableClock is FrameStabilityContainer stability)
+                stability.FrameTimeSpike += onGameplayLagSpike;
         }
 
         protected virtual GameplayClockContainer CreateGameplayClockContainer(WorkingBeatmap beatmap, double gameplayStart) => new MasterGameplayClockContainer(beatmap, gameplayStart);
@@ -536,6 +544,21 @@ namespace osu.Game.Screens.Play
             updateGameplayState();
             updatePauseOnFocusLostState();
             HUDOverlay.InputCountController.IsCounting.Value = !isBreakTime.NewValue;
+        }
+
+        private void onGameplayLagSpike(double spikeTime)
+        {
+            if (!this.IsCurrentScreen() || GameplayClockContainer.IsPaused.Value)
+                return;
+
+            if (PauseCooldownActive || IsBreakTime.Value)
+                return;
+
+            if (GameplayClockContainer.CurrentTime < DrawableRuleset.GameplayStartTime + PAUSE_ON_LAG_GRACE_PERIOD)
+                return;
+
+            if (Pause())
+                Logger.Log($"Gameplay lag spike of {spikeTime:F2}ms detected, pausing.", level: LogLevel.Important);
         }
 
         private void updateGameplayState()
